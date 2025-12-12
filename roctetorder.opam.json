@@ -4,12 +4,13 @@
   "version": "1.0.0",
   "authors": "Mark Raynsford <code@io7m.com>",
   "bug-reports": "https://github.com/io7m-com/roctetorder/issues",
-  "dev-repo": "git+https://github.com/io7m-com/roctetorder/issues",
+  "dev-repo": "https://github.com/io7m-com/roctetorder/issues",
   "homepage": "https://www.io7m.com/software/roctetorder",
   "license": "ISC",
   "maintainer": "Mark Raynsford <code@io7m.com>",
   "synopsis": "Octet order theorems",
   "x-io7m-work-id": "2d5fbcd6-dd56-4a88-8c11-a4e58c45936a",
+  "x-io7m-documentation": "html",
   "depends": [
     {
       "name": "rocq-prover",
