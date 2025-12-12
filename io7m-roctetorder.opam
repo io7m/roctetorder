@@ -13,7 +13,8 @@ synopsis: "Octet order theorems"
 x-io7m-work-id: "2d5fbcd6-dd56-4a88-8c11-a4e58c45936a"
 
 depends: [
-  "rocq-prover" {>= "9.0.0"}
+  "rocq-prover" {= "9.0.0"}
+  "rocq-devtools" {= "9.1.0"}
 ]
 
 install: [
