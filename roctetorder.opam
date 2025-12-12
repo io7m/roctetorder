@@ -1,5 +1,6 @@
-opam-version: "2.0"
+# Auto generated. Do not edit.
 
+opam-version: "2.0"
 name: "roctetorder"
 version: "1.0.0"
 
@@ -21,3 +22,4 @@ install: [
   ["mkdir" "-p" "%{lib}%/coq/user-contrib/com/io7m"]
   ["cp" "src/main/coq/OctetOrder.v" "%{lib}%/coq/user-contrib/com/io7m/OctetOrder.v"]
 ]
+
