@@ -1,0 +1,387 @@
+(*
+ * Copyright © 2025 Mark Raynsford <code@io7m.com> https://www.io7m.com
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+ * SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR
+ * IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ *)
+
+Require Import Stdlib.PArith.PArith.
+Require Import Stdlib.Init.Nat.
+Require Import Stdlib.Arith.PeanoNat.
+Require Import Stdlib.Lists.List.
+
+Import ListNotations.
+
+(** The property of _x_ being divisible by 8. *)
+Definition divisible8 (x : nat) : Prop :=
+  modulo x 8 = 0.
+
+(** An octet is either in big or little endian order. *)
+Inductive octetOrder : Set :=
+  | OctetOrderBig
+  | OctetOrderLittle.
+
+(** A single bit. *)
+Inductive bit : Set :=
+  | B0
+  | B1.
+
+(** A sequence of bits may be divided into groups of eight bits known as octets. 
+    We avoid the use of the term byte because a byte hasn't consistently been 
+    equivalent to eight bits throughout all of computing history. An octet may 
+    either be exact or a remainder. An octet may be a remainder if the length 
+    of the sequence of bits used to produce it was not evenly divisible by 8. 
+    The first n groups of 8 bits consumed from a sequence of bits s will produce 
+    octets that are exact, with the remaining k bits (where k < 8) will produce
+    at most one remainder octet. The remainder octet, if any, has it's least 
+    significant 8 - k bits set to 0. *)
+Inductive octet : Set :=
+  | OctExact  : bit -> bit -> bit -> bit -> bit -> bit -> bit -> bit -> octet
+  | OctRemain : bit -> bit -> bit -> bit -> bit -> bit -> bit -> bit -> octet.
+
+#[local]
+Definition listInduction8 :
+  forall (A : Type),
+  forall (P : list A -> Prop),
+  P [] ->
+  (forall (b0                      : A), P (b0 :: [])) ->
+  (forall (b1 b0                   : A), P (b1 :: b0 :: [])) ->
+  (forall (b2 b1 b0                : A), P (b2 :: b1 :: b0 :: [])) ->
+  (forall (b3 b2 b1 b0             : A), P (b3 :: b2 :: b1 :: b0 :: [])) ->
+  (forall (b4 b3 b2 b1 b0          : A), P (b4 :: b3 :: b2 :: b1 :: b0 :: [])) ->
+  (forall (b5 b4 b3 b2 b1 b0       : A), P (b5 :: b4 :: b3 :: b2 :: b1 :: b0 :: [])) ->
+  (forall (b6 b5 b4 b3 b2 b1 b0    : A), P (b6 :: b5 :: b4 :: b3 :: b2 :: b1 :: b0 :: [])) ->
+  (forall (b7 b6 b5 b4 b3 b2 b1 b0 : A) (rest : list A), P rest -> P (b7 :: b6 :: b5 :: b4 :: b3 :: b2 :: b1 :: b0 :: rest)) ->
+  forall (L : list A), P L :=
+  (fun A P P0 P1 P2 P3 P4 P5 P6 P7 P8 =>
+  fix f (l : list A) :=
+    match l with
+    | []                                                     => P0
+    | x0 :: []                                               => P1 x0
+    | (x0 :: x1 :: [])                                       => P2 x0 x1
+    | (x0 :: x1 :: x2 :: [])                                 => P3 x0 x1 x2
+    | (x0 :: x1 :: x2 :: x3 :: [])                           => P4 x0 x1 x2 x3
+    | (x0 :: x1 :: x2 :: x3 :: x4 :: [])                     => P5 x0 x1 x2 x3 x4
+    | (x0 :: x1 :: x2 :: x3 :: x4 :: x5 :: [])               => P6 x0 x1 x2 x3 x4 x5
+    | (x0 :: x1 :: x2 :: x3 :: x4 :: x5 :: x6 :: [])         => P7 x0 x1 x2 x3 x4 x5 x6
+    | (x0 :: x1 :: x2 :: x3 :: x4 :: x5 :: x6 :: x7 :: rest) => P8 x0 x1 x2 x3 x4 x5 x6 x7 rest (f rest)
+    end).
+
+#[local]
+Lemma app_non_empty : forall (A : Type) (xs : list A) (y : A),
+  xs ++ [y] <> [].
+Proof.
+  intros A xs y.
+  unfold not.
+  destruct xs as [|z zs].
+    intros Hfalse; inversion Hfalse.
+    intros Hfalse; inversion Hfalse.
+Qed.
+
+#[local]
+Lemma app_list_implies_eq : forall (A : Type) (x y : A) (xs : list A),
+  xs ++ [x] = [y] -> xs = [] /\ x = y.
+Proof.
+  intros A x y xs Happ.
+  induction xs as [|z zs] eqn:Hxe.
+  - constructor. reflexivity.
+    rewrite (app_nil_l [x]) in Happ.
+    injection Happ as Heq; exact Heq.
+  - inversion Happ.
+    assert (zs ++ [x] <> []) by (apply app_non_empty).
+    contradiction.
+Qed.
+
+#[local]
+Lemma p8notZ : 8 <> 0.
+Proof. discriminate. Qed.
+
+#[local]
+Lemma list_mod8_0 : forall (A : Type) (xs : list A) (n7 n6 n5 n4 n3 n2 n1 n0 : A),
+  divisible8 (length xs) -> divisible8 (length (n7 :: n6 :: n5 :: n4 :: n3 :: n2 :: n1 :: n0 :: xs)).
+Proof.
+  intros A xs n7 n6 n5 n4 n3 n2 n1 n0 Hlen8.
+  unfold divisible8 in *.
+  assert (n7 :: n6 :: n5 :: n4 :: n3 :: n2 :: n1 :: n0 :: xs
+       = (n7 :: n6 :: n5 :: n4 :: n3 :: n2 :: n1 :: n0 :: []) ++ xs) as HlistEq
+          by reflexivity.
+  rewrite HlistEq.
+  rewrite length_app.
+  assert (length [n7; n6; n5; n4; n3; n2; n1; n0] = 8) as Hprefix8 by reflexivity.
+  rewrite Hprefix8.
+  rewrite <- (Nat.Div0.add_mod_idemp_l 8 (length xs) 8).
+  rewrite (Nat.Div0.mod_same 8).
+  rewrite (Nat.add_0_l).
+  exact Hlen8.
+Qed.
+
+#[local]
+Lemma list_mod8_1 : forall (A : Type) (xs : list A) (n7 n6 n5 n4 n3 n2 n1 n0 : A),
+  divisible8 (length (n7 :: n6 :: n5 :: n4 :: n3 :: n2 :: n1 :: n0 :: xs)) -> divisible8 (length xs).
+Proof.
+  intros A xs n7 n6 n5 n4 n3 n2 n1 n0 Hlen8.
+  unfold divisible8 in *.
+  assert (n7 :: n6 :: n5 :: n4 :: n3 :: n2 :: n1 :: n0 :: xs
+       = (n7 :: n6 :: n5 :: n4 :: n3 :: n2 :: n1 :: n0 :: []) ++ xs) as HlistEq
+          by reflexivity.
+  rewrite HlistEq in Hlen8.
+  rewrite length_app in Hlen8.
+  assert (length [n7; n6; n5; n4; n3; n2; n1; n0] = 8) as Hprefix8 by reflexivity.
+  rewrite Hprefix8 in Hlen8.
+  rewrite <- (Nat.Div0.add_mod_idemp_l 8 (length xs) 8) in Hlen8.
+  rewrite (Nat.Div0.mod_same 8) in Hlen8.
+  rewrite (Nat.add_0_l) in Hlen8.
+  exact Hlen8.
+Qed.
+
+#[local]
+Theorem list_mod8 : forall (A : Type) (xs : list A) (n7 n6 n5 n4 n3 n2 n1 n0 : A),
+  divisible8 (length xs) <-> divisible8 (length (n7 :: n6 :: n5 :: n4 :: n3 :: n2 :: n1 :: n0 :: xs)).
+Proof.
+  intros A xs n7 n6 n5 n4 n3 n2 n1 n0.
+  constructor.
+  - apply list_mod8_0.
+  - apply list_mod8_1.
+Qed.
+
+#[local]
+Lemma mod_8_lt_0 : forall (m : nat),
+  0 < m mod 8 -> 0 < (m + 8) mod 8.
+Proof.
+  intros m Hlt.
+  rewrite (Nat.Div0.add_mod m 8 8).
+  rewrite (Nat.Div0.mod_same).
+  rewrite (Nat.add_0_r).
+  rewrite (Nat.Div0.mod_mod).
+  exact Hlt.
+Qed.
+
+#[local]
+Lemma mod_8_lt_1 : forall (m : nat),
+  0 < (m + 8) mod 8 -> 0 < m mod 8.
+Proof.
+  intros m Hlt.
+  rewrite (Nat.Div0.add_mod m 8 8) in Hlt.
+  rewrite (Nat.Div0.mod_same)      in Hlt.
+  rewrite (Nat.add_0_r)            in Hlt.
+  rewrite (Nat.Div0.mod_mod)       in Hlt.
+  exact Hlt.
+Qed.
+
+#[local]
+Lemma mod_8_lt : forall (m : nat),
+  0 < (m + 8) mod 8 <-> 0 < m mod 8.
+Proof.
+  constructor.
+  apply mod_8_lt_1.
+  apply mod_8_lt_0.
+Qed.
+
+Definition octetIsRemainder (o : octet): Prop :=
+  match o with
+  | OctExact  _ _ _ _ _ _ _ _ => False
+  | OctRemain _ _ _ _ _ _ _ _ => True
+  end.
+
+Definition octetIsExact (o : octet): Prop :=
+  match o with
+  | OctExact  _ _ _ _ _ _ _ _ => True
+  | OctRemain _ _ _ _ _ _ _ _ => False
+  end.
+
+Lemma octetIsRemainderNotExact : forall (o : octet), octetIsRemainder o -> ~octetIsExact o.
+Proof.
+  intros o Hrem Hfalse.
+  destruct o; contradiction.
+Qed.
+
+Lemma octetIsExactNotRemainder : forall (o : octet), octetIsExact o -> ~octetIsRemainder o.
+Proof.
+  intros o Hrem Hfalse.
+  destruct o; contradiction.
+Qed.
+
+Inductive bitsOctetsHasRemainder : list octet -> Prop :=
+  | BOHasRemainder : forall (prefix : list octet) (o : octet),
+    Forall octetIsExact prefix ->
+      octetIsRemainder o ->
+        bitsOctetsHasRemainder (prefix ++ o :: []).
+
+(** If the sequence of octets o produced is arranged such that the first bit of s 
+    appears as the most significant bit of the first octet in o, then o is said to 
+    be in big-endian order. *)
+Fixpoint octetsBigEndianAux
+  (bits   : list bit)
+  (octets : list octet)
+: list octet :=
+  match bits with
+  | (b7 :: b6 :: b5 :: b4 :: b3 :: b2 :: b1 :: b0 :: rest) =>
+    octets ++ [OctExact b7 b6 b5 b4 b3 b2 b1 b0] ++ octetsBigEndianAux rest []
+  | (b7 :: b6 :: b5 :: b4 :: b3 :: b2 :: b1 :: rest) =>
+    octets ++ [OctRemain b7 b6 b5 b4 b3 b2 b1 B0] ++ octetsBigEndianAux rest []
+  | (b7 :: b6 :: b5 :: b4 :: b3 :: b2 :: rest) =>
+    octets ++ [OctRemain b7 b6 b5 b4 b3 b2 B0 B0] ++ octetsBigEndianAux rest []
+  | (b7 :: b6 :: b5 :: b4 :: b3 :: rest) =>
+    octets ++ [OctRemain b7 b6 b5 b4 b3 B0 B0 B0] ++ octetsBigEndianAux rest []
+  | (b7 :: b6 :: b5 :: b4 :: rest) =>
+    octets ++ [OctRemain b7 b6 b5 b4 B0 B0 B0 B0] ++ octetsBigEndianAux rest []
+  | (b7 :: b6 :: b5 :: rest) =>
+    octets ++ [OctRemain b7 b6 b5 B0 B0 B0 B0 B0] ++ octetsBigEndianAux rest []
+  | (b7 :: b6 :: rest) =>
+    octets ++ [OctRemain b7 b6 B0 B0 B0 B0 B0 B0] ++ octetsBigEndianAux rest []
+  | (b7 :: rest) =>
+    octets ++ [OctRemain b7 B0 B0 B0 B0 B0 B0 B0] ++ octetsBigEndianAux rest []
+  | [] =>
+    octets
+  end.
+
+Definition octetsBigEndian (bits : list bit) : list octet :=
+  octetsBigEndianAux bits [].
+
+(** If the sequence of octets o produced is arranged such that the first bit of 
+    s appears as the most significant bit of the last octet in o, then o is said 
+    to be in little-endian order. *)
+Definition octetsLittleEndian (bits : list bit) : list octet :=
+  rev (octetsBigEndianAux bits []).
+
+
+(** A sequence of bits s such that divisible8 (length s) will produce a sequence 
+    consisting of entirely exact octets. *)
+Theorem octetsBigEndianLengthDivisibleAllExact : forall (b : list bit),
+  divisible8 (length b) -> Forall octetIsExact (octetsBigEndian b).
+Proof.
+  intros b Hlen8.
+  unfold octetsBigEndian.
+  induction b using listInduction8.
+  - constructor.
+  - inversion Hlen8.
+  - inversion Hlen8.
+  - inversion Hlen8.
+  - inversion Hlen8.
+  - inversion Hlen8.
+  - inversion Hlen8.
+  - inversion Hlen8.
+  - simpl.
+    rewrite <- list_mod8 in Hlen8.
+    assert (Forall octetIsExact (octetsBigEndianAux b []))   as HallExact by (apply (IHb Hlen8)).
+    assert (octetIsExact (OctExact b7 b6 b5 b4 b3 b2 b1 b0)) as Hexact    by constructor.
+    apply (@Forall_cons octet octetIsExact (OctExact b7 b6 b5 b4 b3 b2 b1 b0) (octetsBigEndianAux b []) Hexact HallExact).
+Qed.
+
+(** A sequence of bits s such that divisible8 (length s) will produce a sequence 
+    consisting of entirely exact octets. *)
+Theorem octetsLittleEndianLengthDivisibleAllExact : forall (b : list bit),
+  divisible8 (length b) -> Forall octetIsExact (octetsLittleEndian b).
+Proof.
+  intros b Hlen8.
+  apply (Forall_rev (octetsBigEndianLengthDivisibleAllExact b Hlen8)).
+Qed.
+
+Theorem octetsBigEndianLengthDivisibleNoRemainder : forall (b : list bit),
+  Forall octetIsExact (octetsBigEndian b) -> ~bitsOctetsHasRemainder (octetsBigEndian b).
+Proof.
+  intros b HallExact.
+  unfold octetsBigEndian.
+  intro Hfalse.
+  inversion Hfalse as [prefix o HprefixAllExact HoIsRemainder HprefixEq].
+  unfold octetsBigEndian in HallExact.
+  (* We know that everything in the list is exact. *)
+  (* We can show that o must be in this list according to HprefixEq. *)
+  assert (In o (octetsBigEndianAux b [])) as HoInB. {
+    assert (In o (prefix ++ [o])) as HoInPrefix by (apply (in_elt o prefix [])).
+    rewrite HprefixEq in HoInPrefix.
+    exact HoInPrefix.
+  }
+  (* And because o is in the list, it must be exact. *)
+  assert (octetIsExact o) as HoIsExact. {
+    rewrite Forall_forall in HallExact.
+    apply (HallExact o HoInB).
+  }
+  (* There is a contradiction; o cannot be both exact and a remainder. *)
+  apply (octetIsExactNotRemainder o HoIsExact HoIsRemainder).
+Qed.
+
+(** A sequence of bits s such that ¬ divisible8 (length s) will produce a remainder octet. *)
+Theorem octetsBigEndianLengthIndivisibleRemainder : forall (b : list bit),
+  0 < length b mod 8 -> exists o, In o (octetsBigEndian b) /\ octetIsRemainder o.
+Proof.
+  intros b Hlength.
+  induction b using listInduction8.
+  - inversion Hlength.
+  - exists (OctRemain b0 B0 B0 B0 B0 B0 B0 B0).
+    constructor.
+    left. reflexivity.
+    constructor.
+  - exists (OctRemain b1 b0 B0 B0 B0 B0 B0 B0).
+    constructor.
+    left.
+    constructor.
+    constructor.
+  - exists (OctRemain b2 b1 b0 B0 B0 B0 B0 B0).
+    constructor.
+    left.
+    constructor.
+    constructor.
+  - exists (OctRemain b3 b2 b1 b0 B0 B0 B0 B0).
+    constructor.
+    left.
+    constructor.
+    constructor.
+  - exists (OctRemain b4 b3 b2 b1 b0 B0 B0 B0).
+    constructor.
+    left.
+    constructor.
+    constructor.
+  - exists (OctRemain b5 b4 b3 b2 b1 b0 B0 B0).
+    constructor.
+    left.
+    constructor.
+    constructor.
+  - exists (OctRemain b6 b5 b4 b3 b2 b1 b0 B0).
+    constructor.
+    left.
+    constructor.
+    constructor.
+  - assert (0 < length b mod 8) as Hlt. {
+      assert (length (b7 :: b6 :: b5 :: b4 :: b3 :: b2 :: b1 :: b0 :: b) = length b + 8) as Heq
+        by (rewrite Nat.add_comm; reflexivity).
+      rewrite Heq in Hlength.
+      rewrite <- (mod_8_lt (length b)).
+      exact Hlength.
+    }
+    assert (exists o : octet, In o (octetsBigEndian b) /\ octetIsRemainder o) as HEx
+      by (apply (IHb Hlt)).
+    destruct HEx as [ox [HoxIn HoxRem]].
+    simpl.
+    exists ox.
+    constructor.
+    right.
+    exact HoxIn.
+    exact HoxRem.
+Qed.
+
+(** A sequence of bits s such that ¬ divisible8 (length s) will produce a remainder octet. *)
+Theorem octetsLittleEndianLengthIndivisibleRemainder : forall (b : list bit),
+  0 < length b mod 8 -> exists o, In o (octetsLittleEndian b) /\ octetIsRemainder o.
+Proof.
+  unfold octetsLittleEndian.
+  intros b Hlen.
+  assert (exists o, In o (octetsBigEndian b) /\ octetIsRemainder o) as Hexists
+    by (apply (octetsBigEndianLengthIndivisibleRemainder b Hlen)).
+  destruct Hexists as [ox [HoxIn HoxRem]].
+  exists ox.
+  rewrite <- (in_rev (octetsBigEndianAux b [])).
+  constructor.
+  exact HoxIn.
+  exact HoxRem.
+Qed.
+

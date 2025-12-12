@@ -1,0 +1,6 @@
+_opam
+*.glob
+*.vo
+*.vok
+*.vos
+*.aux
