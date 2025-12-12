@@ -19,6 +19,10 @@ depends: [
   "rocq-devtools" {= "9.1.0"}
 ]
 
+build: [
+  ["./rocq-make.sh"]
+]
+
 install: [
   ["mkdir" "-p" "%{lib}%/coq/user-contrib/com/io7m"]
   ["cp" "src/main/coq/OctetOrder.v" "%{lib}%/coq/user-contrib/com/io7m/OctetOrder.v"]

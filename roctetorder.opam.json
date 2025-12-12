@@ -21,6 +21,9 @@
       "version": "9.1.0"
     }
   ],
+  "build": [
+    ["./rocq-make.sh"]
+  ],
   "install": [
     [
       "mkdir",
