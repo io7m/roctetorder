@@ -1,6 +1,6 @@
 opam-version: "2.0"
 
-name: "io7m-roctetorder"
+name: "roctetorder"
 version: "1.0.0"
 
 authors: "Mark Raynsford <code@io7m.com>"

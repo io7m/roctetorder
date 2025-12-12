@@ -1,7 +1,7 @@
-io7m-roctetorder
+roctetorder
 ===
 
-![io7m-roctetorder](./src/site/resources/io7m-roctetorder.jpg?raw=true)
+![roctetorder](./src/site/resources/roctetorder.jpg?raw=true)
 
 ## roctetorder
 
