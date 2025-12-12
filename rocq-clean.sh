@@ -1,6 +1,6 @@
 #!/bin/sh -e
 
-rm -f src/*.glob
-rm -f src/*.vo
-rm -f src/*.vok
-rm -f src/*.vos
+rm -f src/main/coq/*.glob
+rm -f src/main/coq/*.vo
+rm -f src/main/coq/*.vok
+rm -f src/main/coq/*.vos

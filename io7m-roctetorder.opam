@@ -18,5 +18,5 @@ depends: [
 
 install: [
   ["mkdir" "-p" "%{lib}%/coq/user-contrib/com/io7m"]
-  ["cp" "src/OctetOrder.v" "%{lib}%/coq/user-contrib/com/io7m/OctetOrder.v"]
+  ["cp" "src/main/coq/OctetOrder.v" "%{lib}%/coq/user-contrib/com/io7m/OctetOrder.v"]
 ]

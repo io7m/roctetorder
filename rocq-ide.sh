@@ -1,3 +1,3 @@
 #!/bin/sh -e
 
-rocqide -Q src com.io7m "$@"
+rocqide -Q src/main/coq com.io7m "$@"
