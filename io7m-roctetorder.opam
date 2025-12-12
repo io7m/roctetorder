@@ -10,6 +10,7 @@ homepage: "https://www.io7m.com/software/roctetorder"
 license: "ISC"
 maintainer: "Mark Raynsford <code@io7m.com>"
 synopsis: "Octet order theorems"
+x-io7m-work-id: "2d5fbcd6-dd56-4a88-8c11-a4e58c45936a"
 
 depends: [
   "rocq-prover" {>= "9.0.0"}
